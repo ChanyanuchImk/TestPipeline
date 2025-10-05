@@ -67,12 +67,12 @@ jobs:
           chmod 400 ~/.ssh/id_rsa
           ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
 
-      - name: Copy files to EC2
+      - name: Copy compose & configs to EC2
         run: |
-          scp -i ~/.ssh/id_rsa \
-          Noise_Map_tonkit.yaml nginx.conf initialSQL.sql \
-          -r frontend \
+          scp -i ~/.ssh/id_rsa -r \
+          Noise_Map_tonkit.yaml nginx.conf initialSQL.sql frontend \
           ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}:/home/${{ secrets.EC2_USER }}/noisemap/
+
 
       - name: Deploy NoiseMap on EC2
         run: |
