@@ -85,9 +85,9 @@ jobs:
             docker pull ${{ secrets.DOCKERHUB_USERNAME }}/noisemap-nginx:latest
 
             echo "🔹 Restarting services..."
-            docker compose pull
-            docker compose down
-            docker compose up -d
+            docker compose -f Noise_Map_tonkit.yaml pull
+            docker compose -f Noise_Map_tonkit.yaml down
+            docker compose -f Noise_Map_tonkit.yaml up -d
 
             echo "✅ Deployment complete!"
             docker compose ps
