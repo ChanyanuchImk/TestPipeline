@@ -114,11 +114,17 @@ jobs:
               sudo systemctl start docker
             fi
       
-            echo "Installing Docker Compose (if missing)..."
-            if ! command -v docker-compose &> /dev/null; then
-              sudo curl -L "https://github.com/docker/compose/releases/download/v2.27.1/docker-compose-linux-x86_64" -o /usr/local/bin/docker-compose
-              sudo chmod +x /usr/local/bin/docker-compose
+            echo "Installing Docker Compose plugin..."
+            if ! sudo docker compose version &> /dev/null; then
+              sudo mkdir -p /usr/libexec/docker/cli-plugins
+              sudo curl -SL https://github.com/docker/compose/releases/download/v2.27.1/docker-compose-linux-x86_64 \
+                -o /usr/libexec/docker/cli-plugins/docker-compose
+              sudo chmod +x /usr/libexec/docker/cli-plugins/docker-compose
             fi
+      
+            echo "Docker version check"
+            sudo docker --version
+            sudo docker compose version
       
             echo "Pulling latest Nginx image..."
             sudo docker pull ${{ secrets.DOCKERHUB_USERNAME }}/noisemap-nginx:latest
@@ -131,4 +137,5 @@ jobs:
             echo "Deployment complete!"
             sudo docker compose -f Noise_Map_tonkit.yaml ps
           EOF
+
 
