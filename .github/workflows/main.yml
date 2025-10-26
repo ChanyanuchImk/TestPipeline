@@ -49,31 +49,29 @@ jobs:
 
           FILES_TO_SEND=$(tar czf - Noise_Map_tonkit.yaml nginx.conf frontend initialSQL.sql 2>/dev/null | base64)
 
-          COMMANDS=$(cat <<'EOS'
-          mkdir -p ~/noisemap
-          cd ~/noisemap
-          echo "${FILES_TO_SEND}" | base64 -d | tar xz
-          sudo yum install -y docker
-          sudo systemctl enable docker
-          sudo systemctl start docker
-
-          if ! command -v docker-compose &> /dev/null; then
-            sudo curl -L "https://github.com/docker/compose/releases/download/v2.27.1/docker-compose-linux-x86_64" -o /usr/local/bin/docker-compose
-            sudo chmod +x /usr/local/bin/docker-compose
-          fi
-
-          cd ~/noisemap
-          sudo docker compose -f Noise_Map_tonkit.yaml down || true
-          sudo docker compose -f Noise_Map_tonkit.yaml up -d
-          sudo docker compose -f Noise_Map_tonkit.yaml ps
-          EOS
-          )
-
-          aws ssm send-command \
-            --instance-ids "$INSTANCE_ID" \
-            --document-name "AWS-RunShellScript" \
-            --comment "Deploy NoiseMap using compose file" \
-            --parameters "commands=$COMMANDS" \
-            --output text
-
+          cat > ssm-input.json <<EOF
+          {
+            "InstanceIds": ["$INSTANCE_ID"],
+            "DocumentName": "AWS-RunShellScript",
+            "Comment": "Deploy NoiseMap via SSM",
+            "Parameters": {
+              "commands": [
+                "mkdir -p ~/noisemap",
+                "cd ~/noisemap",
+                "echo '$FILES_TO_SEND' | base64 -d | tar xz",
+                "sudo yum install -y docker",
+                "sudo systemctl enable docker",
+                "sudo systemctl start docker",
+                "if ! command -v docker-compose &> /dev/null; then sudo curl -L 'https://github.com/docker/compose/releases/download/v2.27.1/docker-compose-linux-x86_64' -o /usr/local/bin/docker-compose && sudo chmod +x /usr/local/bin/docker-compose; fi",
+                "cd ~/noisemap",
+                "sudo docker compose -f Noise_Map_tonkit.yaml down || true",
+                "sudo docker compose -f Noise_Map_tonkit.yaml up -d",
+                "sudo docker compose -f Noise_Map_tonkit.yaml ps"
+              ]
+            }
+          }
+          EOF
+          
+          aws ssm send-command --cli-input-json file://ssm-input.json --output text
+          
           echo "NoiseMap deployed on EC2 via SSM"
