@@ -32,7 +32,7 @@ jobs:
             INSTANCE_ID=$(aws ec2 run-instances \
               --image-id ami-0e731c8a588258d0d \
               --instance-type t3.micro \
-              --key-name NoiseMapKey \
+              --key-name labsuser \
               --security-group-ids sg-008c25a6e0b8e6800 \
               --tag-specifications 'ResourceType=instance,Tags=[{Key=Project,Value=NoiseMap}]' \
               --query "Instances[0].InstanceId" --output text)
