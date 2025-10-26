@@ -47,7 +47,9 @@ jobs:
         run: |
           echo "Sending NoiseMap files to EC2 via SSM"
 
-          FILES_TO_SEND=$(tar czf - Noise_Map_tonkit.yaml nginx.conf frontend initialSQL.sql 2>/dev/null | base64)
+          tar czf noisemap.tar.gz Noise_Map_tonkit.yaml nginx.conf frontend initialSQL.sql 2>/dev/null
+
+          ENCODED=$(base64 -w 0 noisemap.tar.gz)
 
           cat > ssm-input.json <<EOF
           {
@@ -56,9 +58,9 @@ jobs:
             "Comment": "Deploy NoiseMap via SSM",
             "Parameters": {
               "commands": [
-                "mkdir -p ~/noisemap",
-                "cd ~/noisemap",
-                "echo '$FILES_TO_SEND' | base64 -d | tar xz",
+                "cd /tmp",
+                "echo '$ENCODED' | base64 -d > noisemap.tar.gz",
+                "mkdir -p ~/noisemap && tar xzf /tmp/noisemap.tar.gz -C ~/noisemap",
                 "sudo yum install -y docker",
                 "sudo systemctl enable docker",
                 "sudo systemctl start docker",
