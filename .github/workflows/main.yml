@@ -112,7 +112,6 @@ jobs:
               sudo dnf install -y docker
               sudo systemctl enable docker
               sudo systemctl start docker
-              sudo usermod -aG docker ec2-user
             fi
       
             echo "Installing Docker Compose (if missing)..."
@@ -122,13 +121,14 @@ jobs:
             fi
       
             echo "Pulling latest Nginx image..."
-            docker pull ${{ secrets.DOCKERHUB_USERNAME }}/noisemap-nginx:latest
+            sudo docker pull ${{ secrets.DOCKERHUB_USERNAME }}/noisemap-nginx:latest
       
             echo "Restarting stack..."
-            docker compose -f Noise_Map_tonkit.yaml pull
-            docker compose -f Noise_Map_tonkit.yaml down
-            docker compose -f Noise_Map_tonkit.yaml up -d
+            sudo docker compose -f Noise_Map_tonkit.yaml pull
+            sudo docker compose -f Noise_Map_tonkit.yaml down
+            sudo docker compose -f Noise_Map_tonkit.yaml up -d
       
             echo "Deployment complete!"
-            docker compose -f Noise_Map_tonkit.yaml ps
+            sudo docker compose -f Noise_Map_tonkit.yaml ps
           EOF
+
