@@ -33,7 +33,7 @@ jobs:
               --image-id ami-0e731c8a588258d0d \
               --instance-type t3.micro \
               --key-name NoiseMapKey \
-              --security-group-ids sg-0123456789abcdef \
+              --security-group-ids sg-008c25a6e0b8e6800 \
               --tag-specifications 'ResourceType=instance,Tags=[{Key=Project,Value=NoiseMap}]' \
               --query "Instances[0].InstanceId" --output text)
 
