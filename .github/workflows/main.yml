@@ -9,7 +9,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout Repository
+      - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Configure AWS Credentials
@@ -20,73 +20,60 @@ jobs:
           aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
           aws-region: us-east-1
 
-      - name: Check if EC2 already exists
-        id: check_ec2
+      - name: Ensure EC2 instance exists
+        id: ec2
         run: |
           INSTANCE_ID=$(aws ec2 describe-instances \
             --filters "Name=tag:Project,Values=NoiseMap" "Name=instance-state-name,Values=running" \
             --query "Reservations[].Instances[].InstanceId" --output text)
 
           if [ -z "$INSTANCE_ID" ]; then
-            echo "EC2 not found, creating new one..."
+            echo "Creating new EC2..."
             INSTANCE_ID=$(aws ec2 run-instances \
               --image-id ami-0e731c8a588258d0d \
               --instance-type t3.micro \
-              --key-name vockey \
-              --security-group-ids sg-008c25a6e0b8e6800 \
+              --iam-instance-profile Name="LabInstanceProfile" \
+              --security-groups default \
               --tag-specifications 'ResourceType=instance,Tags=[{Key=Project,Value=NoiseMap}]' \
               --query "Instances[0].InstanceId" --output text)
-
-            echo "Waiting for EC2 to be ready..."
             aws ec2 wait instance-status-ok --instance-ids $INSTANCE_ID
           else
             echo "EC2 already exists: $INSTANCE_ID"
           fi
 
-          PUBLIC_IP=$(aws ec2 describe-instances --instance-ids $INSTANCE_ID --query "Reservations[].Instances[].PublicIpAddress" --output text)
-          echo "EC2_IP=$PUBLIC_IP" >> $GITHUB_ENV
+          echo "INSTANCE_ID=$INSTANCE_ID" >> $GITHUB_ENV
 
-      - name: Setup SSH for EC2
+      - name: Upload compose & configs via SSM
         run: |
-          mkdir -p ~/.ssh
-          echo "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/id_rsa
-          chmod 400 ~/.ssh/id_rsa
-          ssh-keyscan -H $EC2_IP >> ~/.ssh/known_hosts
+          echo "Sending NoiseMap files to EC2 via SSM"
 
-      - name: Deploy Docker Stack on EC2
-        run: |
-          ssh -i ~/.ssh/id_rsa ec2-user@$EC2_IP << 'EOF'
-            set -e
-            sudo yum install -y docker
-            sudo systemctl enable docker
-            sudo systemctl start docker
-            sudo usermod -aG docker $USER
+          FILES_TO_SEND=$(tar czf - Noise_Map_tonkit.yaml nginx.conf frontend initialSQL.sql 2>/dev/null | base64)
 
-            # ติดตั้ง docker compose ถ้ายังไม่มี
-            if ! command -v docker-compose &> /dev/null; then
-              sudo curl -L "https://github.com/docker/compose/releases/download/v2.27.1/docker-compose-linux-x86_64" -o /usr/local/bin/docker-compose
-              sudo chmod +x /usr/local/bin/docker-compose
-            fi
+          COMMANDS=$(cat <<'EOS'
+          mkdir -p ~/noisemap
+          cd ~/noisemap
+          echo "${FILES_TO_SEND}" | base64 -d | tar xz
+          sudo yum install -y docker
+          sudo systemctl enable docker
+          sudo systemctl start docker
 
-            mkdir -p ~/noisemap
-            cd ~/noisemap
+          if ! command -v docker-compose &> /dev/null; then
+            sudo curl -L "https://github.com/docker/compose/releases/download/v2.27.1/docker-compose-linux-x86_64" -o /usr/local/bin/docker-compose
+            sudo chmod +x /usr/local/bin/docker-compose
+          fi
 
-            # ดึงไฟล์จาก repo
-            rm -rf ./*
-            exit
-          EOF
+          cd ~/noisemap
+          sudo docker compose -f Noise_Map_tonkit.yaml down || true
+          sudo docker compose -f Noise_Map_tonkit.yaml up -d
+          sudo docker compose -f Noise_Map_tonkit.yaml ps
+          EOS
+          )
 
-      - name: Copy Compose files
-        run: |
-          scp -i ~/.ssh/id_rsa -r \
-            Noise_Map_tonkit.yaml nginx.conf initialSQL.sql frontend \
-            ec2-user@$EC2_IP:/home/ec2-user/noisemap/
+          aws ssm send-command \
+            --instance-ids "$INSTANCE_ID" \
+            --document-name "AWS-RunShellScript" \
+            --comment "Deploy NoiseMap using compose file" \
+            --parameters "commands=$COMMANDS" \
+            --output text
 
-      - name: Start Compose
-        run: |
-          ssh -i ~/.ssh/id_rsa ec2-user@$EC2_IP << 'EOF'
-            cd ~/noisemap
-            docker compose down || true
-            docker compose up -d
-            docker compose ps
-          EOF
+          echo "NoiseMap deployed on EC2 via SSM"
