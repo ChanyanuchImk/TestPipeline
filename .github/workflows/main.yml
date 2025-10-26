@@ -30,7 +30,7 @@ jobs:
           if [ -z "$INSTANCE_ID" ]; then
             echo "EC2 not found, creating new one..."
             INSTANCE_ID=$(aws ec2 run-instances \
-              --image-id ami-0f3a440bbcff3d043 \
+              --image-id ami-0e731c8a588258d0d \
               --instance-type t3.micro \
               --key-name NoiseMapKey \
               --security-group-ids sg-0123456789abcdef \
