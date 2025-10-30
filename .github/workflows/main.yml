@@ -79,11 +79,12 @@ jobs:
 
       - name: Setup SSH connection
         run: |
-          export HOME=/home/runner
+          set -x
           mkdir -p ~/.ssh
-          echo "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/id_rsa
+          printf "%s\n" "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/id_rsa
           chmod 400 ~/.ssh/id_rsa
-          ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
+          ssh-keyscan -T 30 -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts 2>&1 || echo "⚠️ ssh-keyscan failed"
+          ssh -v -i ~/.ssh/id_rsa ec2-user@${{ secrets.EC2_HOST }} "echo ✅ Connected"
 
       # Copy files
       - name: Copy NoiseMap files to EC2
