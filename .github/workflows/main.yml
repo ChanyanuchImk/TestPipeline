@@ -79,12 +79,17 @@ jobs:
 
       - name: Setup SSH connection
         run: |
-          set -x
+          export HOME=/home/runner
           mkdir -p ~/.ssh
+      
+          # ✅ ใช้ printf เพื่อเก็บ newline ของ key ให้ครบ
           printf "%s\n" "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/id_rsa
+      
           chmod 400 ~/.ssh/id_rsa
-          ssh-keyscan -T 30 -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts 2>&1 || echo "⚠️ ssh-keyscan failed"
-          ssh -v -i ~/.ssh/id_rsa ec2-user@${{ secrets.EC2_HOST }} "echo ✅ Connected"
+          ssh-keyscan -T 30 -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts 2>/dev/null || echo "⚠️ ssh-keyscan failed"
+      
+          # ทดสอบว่าคีย์ใช้ได้
+          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no ec2-user@${{ secrets.EC2_HOST }} "echo ✅ Connected"
 
       # Copy files
       - name: Copy NoiseMap files to EC2
