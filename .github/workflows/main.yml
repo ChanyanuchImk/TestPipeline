@@ -145,5 +145,45 @@ jobs:
             echo "Deployment complete!"
             sudo docker compose -f Noise_Map_tonkit.yaml ps
           EOF
-
-
+          
+      - name: Publish Layer to GeoServer (workspace:ne)
+        run: |
+          echo "Publishing GeoServer layer..."
+          GEO_HOST="http://${{ env.EC2_IP }}:8080/geoserver"
+          AUTH="admin:geoserver"  # หรือเก็บไว้ใน secrets ก็ได้
+          WORKSPACE="ne"
+          STORE="noisemap_db"
+          DB_HOST="db"
+          DB_PORT="5432"
+          DB_NAME="noisedb"
+          DB_USER="postgres"
+          DB_PASS="secret"
+  
+          curl -v -u $AUTH -XPOST -H "Content-type: text/xml" \
+            -d "<workspace><name>${WORKSPACE}</name></workspace>" \
+            "${GEO_HOST}/rest/workspaces" || true
+ 
+          curl -v -u $AUTH -XPOST -H "Content-type: application/xml" \
+            -d "<dataStore>
+                  <name>${STORE}</name>
+                  <connectionParameters>
+                    <host>${DB_HOST}</host>
+                    <port>${DB_PORT}</port>
+                    <database>${DB_NAME}</database>
+                    <user>${DB_USER}</user>
+                    <passwd>${DB_PASS}</passwd>
+                    <dbtype>postgis</dbtype>
+                  </connectionParameters>
+                </dataStore>" \
+            "${GEO_HOST}/rest/workspaces/${WORKSPACE}/datastores" || true
+ 
+          curl -v -u $AUTH -XPOST -H "Content-type: text/xml" \
+            -d "<featureType>
+                  <name>noise_spatial_table</name>
+                  <title>Noise Spatial Table</title>
+                </featureType>" \
+            "${GEO_HOST}/rest/workspaces/${WORKSPACE}/datastores/${STORE}/featuretypes" || true
+    
+          echo "Workspace '${WORKSPACE}' published successfully!"
+  
+  
