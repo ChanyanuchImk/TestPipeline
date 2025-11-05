@@ -54,7 +54,7 @@ jobs:
         run: |
           echo "Checking EC2 instance..."
           INSTANCE_ID=$(aws ec2 describe-instances \
-            --filters "Name=tag:Project,Values=NoiseMap" "Name=instance-state-name,Values=running" \
+            --filters "Name=tag:Project,Values=MapNoise" "Name=instance-state-name,Values=running" \
             --query "Reservations[].Instances[].InstanceId" --output text)
 
           if [ -z "$INSTANCE_ID" ]; then
@@ -64,7 +64,7 @@ jobs:
               --instance-type t3.micro \
               --key-name noisemapkey \
               --security-groups default \
-              --tag-specifications 'ResourceType=instance,Tags=[{Key=Project,Value=NoiseMap}]' \
+              --tag-specifications 'ResourceType=instance,Tags=[{Key=Project,Value=MapNoise}]' \
               --query "Instances[0].InstanceId" --output text)
             echo "Waiting for instance to be ready..."
             aws ec2 wait instance-running --instance-ids $INSTANCE_ID
@@ -82,15 +82,12 @@ jobs:
           export HOME=/home/runner
           mkdir -p ~/.ssh
       
-          # เขียนคีย์โดยคง newline ครบ
           printf "%s\n" "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/id_rsa
           chmod 400 ~/.ssh/id_rsa
       
-          echo "⚠️ Skipping ssh-keyscan (บาง runner อาจ timeout)"
-          # ไม่ต้องใช้ ssh-keyscan แล้ว
-          # ใช้ StrictHostKeyChecking=no เพื่อไม่ตรวจ host key
-      
-          echo "✅ Testing SSH connection..."
+          echo "Skipping ssh-keyscan"
+          
+          echo "Testing SSH connection..."
           ssh -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa ec2-user@${{ secrets.EC2_HOST }} "echo ✅ Connected to EC2"
 
       # Copy files
