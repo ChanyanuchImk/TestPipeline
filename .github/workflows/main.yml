@@ -148,49 +148,47 @@ jobs:
             sudo docker compose -f Noise_Map_tonkit.yaml ps
           EOF
           
-          - name: Publish Layer to GeoServer (workspace: ne)
-            run: |
-              echo "Publishing GeoServer layer..."
-              GEO_HOST="http://${{ env.EC2_IP }}:8080/geoserver"
-              AUTH="admin:geoserver"
-              WORKSPACE="ne"
-              STORE="noisemap_db"
-              DB_HOST="db"
-              DB_PORT="5432"
-              DB_NAME="noisedb"
-              DB_USER="postgres"
-              DB_PASS="secret"
+      - name: Publish Layer to GeoServer (workspace: ne)
+        run: |
+          echo "Publishing GeoServer layer..."
+          GEO_HOST="http://${{ env.EC2_IP }}:8080/geoserver"
+          AUTH="admin:geoserver"
+          WORKSPACE="ne"
+          STORE="noisemap_db"
+          DB_HOST="db"
+          DB_PORT="5432"
+          DB_NAME="noisedb"
+          DB_USER="postgres"
+          DB_PASS="secret"
           
-              # 1️⃣ Create workspace
-              curl -s -o /dev/null -w "%{http_code}" -u $AUTH -XPOST -H "Content-type: text/xml" \
-                -d "<workspace><name>${WORKSPACE}</name></workspace>" \
-                "${GEO_HOST}/rest/workspaces" || true
-          
-              # 2️⃣ Create datastore
-              curl -s -o /dev/null -w "%{http_code}" -u $AUTH -XPOST -H "Content-type: application/xml" \
-                -d "<dataStore>
-                      <name>${STORE}</name>
-                      <connectionParameters>
-                        <host>${DB_HOST}</host>
-                        <port>${DB_PORT}</port>
-                        <database>${DB_NAME}</database>
-                        <user>${DB_USER}</user>
-                        <passwd>${DB_PASS}</passwd>
-                        <dbtype>postgis</dbtype>
-                        <schema>public</schema>
-                        <namespace>${WORKSPACE}</namespace>
-                      </connectionParameters>
-                    </dataStore>" \
-                "${GEO_HOST}/rest/workspaces/${WORKSPACE}/datastores" || true
+          curl -s -o /dev/null -w "%{http_code}" -u $AUTH -XPOST -H "Content-type: text/xml" \
+          -d "<workspace><name>${WORKSPACE}</name></workspace>" \
+          "${GEO_HOST}/rest/workspaces" || true
+
+          curl -s -o /dev/null -w "%{http_code}" -u $AUTH -XPOST -H "Content-type: application/xml" \
+          -d "<dataStore>
+              <name>${STORE}</name>
+              <connectionParameters>
+              <host>${DB_HOST}</host>
+              <port>${DB_PORT}</port>
+              <database>${DB_NAME}</database>
+              <user>${DB_USER}</user>
+              <passwd>${DB_PASS}</passwd>
+              <dbtype>postgis</dbtype>
+              <schema>public</schema>
+              <namespace>${WORKSPACE}</namespace>
+              </connectionParameters>
+              </dataStore>" \
+           "${GEO_HOST}/rest/workspaces/${WORKSPACE}/datastores" || true
           
               # 3️⃣ Publish layer
-              curl -s -o /dev/null -w "%{http_code}" -u $AUTH -XPOST -H "Content-type: text/xml" \
-                -d "<featureType>
-                      <name>noise_spatial_table</name>
-                      <nativeName>noise_spatial_table</nativeName>
-                      <title>Noise Spatial Table</title>
-                      <srs>EPSG:4326</srs>
-                    </featureType>" \
-                "${GEO_HOST}/rest/workspaces/${WORKSPACE}/datastores/${STORE}/featuretypes" || true
+          curl -s -o /dev/null -w "%{http_code}" -u $AUTH -XPOST -H "Content-type: text/xml" \
+          -d "<featureType>
+              <name>noise_spatial_table</name>
+              <nativeName>noise_spatial_table</nativeName>
+              <title>Noise Spatial Table</title>
+              <srs>EPSG:4326</srs>
+              </featureType>" \
+          "${GEO_HOST}/rest/workspaces/${WORKSPACE}/datastores/${STORE}/featuretypes" || true
           
-              echo "✅ Workspace '${WORKSPACE}' and layer published successfully!"
+          echo "✅ Workspace '${WORKSPACE}' and layer published successfully!"
