@@ -89,6 +89,11 @@ jobs:
           
           echo "Testing SSH connection..."
           ssh -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa ec2-user@${{ secrets.EC2_HOST }} "echo ✅ Connected to EC2"
+          
+      - name: Add EC2 host key
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -H $EC2_IP >> ~/.ssh/known_hosts
 
       # Copy files
       - name: Copy NoiseMap files to EC2
